@@ -202,17 +202,26 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 				return nil, fmt.Errorf("binary file contents not supported")
 			}
 		} else {
-			isBinary, err := shared.IsBinaryFile(f)
-			if err != nil {
-				return fs, fmt.Errorf("failed to read file %s: %w", f, err)
-			}
-			if isBinary {
-				return nil, fmt.Errorf("failed to upload %s: binary file not supported", f)
-			}
-
 			content, err = os.ReadFile(f)
 			if err != nil {
 				return fs, fmt.Errorf("failed to read file %s: %w", f, err)
+			}
+
+			var containsCc = containsCc(content)
+			fmt.Printf("%t\n", containsCc)
+
+			var binaryCheckContent = bytes.Clone(content)
+			fmt.Printf("%v\n", binaryCheckContent)
+			if containsCc {
+				fmt.Print("clearing\n")
+				binaryCheckContent = replaceCC(content)
+			}
+			fmt.Printf("%v\n", binaryCheckContent)
+
+			isBinary := shared.IsBinaryContents(binaryCheckContent)
+
+			if isBinary {
+				return nil, fmt.Errorf("failed to upload %s: binary file not supported", f)
 			}
 
 			filename = filepath.Base(f)
@@ -224,6 +233,33 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 	}
 
 	return fs, nil
+}
+
+// NOTE: all ANSI control chars don't raise the error
+// NOTE: could not write a literal ^I (Horizontal Tab) control char
+// ccs that do not result in a binary error
+// ^L (Form Feed), ^M (CR), ^[ (ESC), ^? (Delete)
+
+// ascii control chars that fail the isBinaryContents binary check
+var controlChars = [...]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+	11, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 28, 29, 30, 31, 127}
+
+// checks whether ascii cc are in contents
+func containsCc(data []byte) bool {
+	return bytes.ContainsAny(data, string(controlChars[:]))
+}
+
+// returns contents with ascii cc removed
+func replaceCC(data []byte) []byte {
+	var cleaned = []byte{}
+	for a := 0; a < len(data); a++ {
+		if !bytes.Contains(controlChars[:], []byte{data[a]}) {
+			fmt.Printf("data[a] = %v\n", data[a])
+			cleaned = append(cleaned, data[a])
+		}
+	}
+
+	return cleaned
 }
 
 func guessGistName(files map[string]*shared.GistFile) string {
