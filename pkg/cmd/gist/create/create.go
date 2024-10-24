@@ -242,7 +242,7 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 
 // ascii control chars that fail the isBinaryContents binary check
 var controlChars = [...]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-	11, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 26, 28, 29, 30, 31, 127}
+	11, 14, 15, 16, 17, 18, 19, 20, 22, 21, 23, 24, 25, 26, 28, 29, 30, 31}
 
 // checks whether ascii cc are in contents
 func containsCc(data []byte) bool {
@@ -251,13 +251,18 @@ func containsCc(data []byte) bool {
 
 // returns contents with ascii cc removed
 func replaceCC(data []byte) []byte {
-	var cleaned = []byte{}
+	var cleaned = make([]byte, len(data))
+
 	for a := 0; a < len(data); a++ {
 		if !bytes.Contains(controlChars[:], []byte{data[a]}) {
 			fmt.Printf("data[a] = %v\n", data[a])
-			cleaned = append(cleaned, data[a])
+			cleaned[a] = data[a]
 		}
+
 	}
+
+	fmt.Print("trimming\n")
+	cleaned = bytes.ReplaceAll(cleaned, []byte{0}, []byte{})
 
 	return cleaned
 }
