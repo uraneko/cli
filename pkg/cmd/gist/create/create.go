@@ -188,6 +188,20 @@ func createRun(opts *CreateOptions) error {
 	return nil
 }
 
+var CC = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
+
+func FileContainsControlChar(data []byte) bool {
+	return bytes.ContainsAny(data, string(CC))
+}
+
+func FilterCC(data []byte) []byte {
+	// return bytes.ReplaceAll(data, CC, []byte{})
+	for idx := 0; idx < len(CC); idx += 1 {
+		data = bytes.ReplaceAll(data, []byte{CC[idx]}, []byte{})
+	}
+	return data
+}
+
 func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []string) (map[string]*shared.GistFile, error) {
 	fs := map[string]*shared.GistFile{}
 
@@ -221,6 +235,11 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 				return fs, fmt.Errorf("failed to read file %s: %w", f, err)
 			}
 			if isBinary {
+				data, _ := os.ReadFile(f)
+
+				if FileContainsControlChar(data) {
+					fmt.Printf("%d\n", FilterCC(data))
+				}
 				return nil, fmt.Errorf("failed to upload %s: binary file not supported", f)
 			}
 
