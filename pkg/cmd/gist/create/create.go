@@ -198,22 +198,17 @@ func cCToUnicodeCP(content []byte) ([]byte, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to turn control char to unicode code point")
 			}
-			fmt.Println(CC[idx])
-			fmt.Println(uniCP)
-			fmt.Println(content)
 			content = bytes.ReplaceAll(content, []byte{CC[idx]}, uniCP[1:len(uniCP)-1])
-			fmt.Println(content)
-			fmt.Println("==========\n\n")
 		}
 	}
 
 	return content, nil
 }
 
-// func containsControlChar(data []byte) bool {
-// 	return bytes.ContainsAny(data, string(CC))
-// }
-//
+func containsControlChar(data []byte) bool {
+	return bytes.ContainsAny(data, string(CC))
+}
+
 // func filterControlChar(data []byte) []byte {
 // 	// return bytes.ReplaceAll(data, CC, []byte{})
 // 	for idx := 0; idx < len(CC); idx += 1 {
@@ -272,13 +267,17 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 		// 	}
 		// }
 
-		utf8Content, err := CCToUnicodeCP(content)
-		if err != nil {
-			return nil, fmt.Errorf("failed to utf8 encode input, gist content is not a proper uncode string\n%s", err)
+		if containsControlChar(content) {
+			utf8Content, err := cCToUnicodeCP(content)
+			if err != nil {
+				return nil, fmt.Errorf("failed to utf8 encode input, gist content is not a proper uncode string\n%s", err)
+			}
+
+			content = utf8Content
 		}
 
 		fs[filename] = &shared.GistFile{
-			Content: string(utf8Content),
+			Content: string(content),
 		}
 	}
 
