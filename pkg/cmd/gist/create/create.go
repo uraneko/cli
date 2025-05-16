@@ -188,19 +188,39 @@ func createRun(opts *CreateOptions) error {
 	return nil
 }
 
-var CC = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 127}
+var CC = []byte{1, 2, 3, 4, 5, 6, 7, 8, 11, 12, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 127}
 
-func containsControlChar(data []byte) bool {
-	return bytes.ContainsAny(data, string(CC))
-}
-
-func filterCC(data []byte) []byte {
-	// return bytes.ReplaceAll(data, CC, []byte{})
+// transforms control chars to unicode code points
+func cCToUnicodeCP(content []byte) ([]byte, error) {
 	for idx := 0; idx < len(CC); idx += 1 {
-		data = bytes.ReplaceAll(data, []byte{CC[idx]}, []byte{})
+		if bytes.Contains(content, []byte{CC[idx]}) {
+			uniCP, err := json.Marshal(string(CC[idx]))
+			if err != nil {
+				return nil, fmt.Errorf("failed to turn control char to unicode code point")
+			}
+			fmt.Println(CC[idx])
+			fmt.Println(uniCP)
+			fmt.Println(content)
+			content = bytes.ReplaceAll(content, []byte{CC[idx]}, uniCP[1:len(uniCP)-1])
+			fmt.Println(content)
+			fmt.Println("==========\n\n")
+		}
 	}
-	return data
+
+	return content, nil
 }
+
+// func containsControlChar(data []byte) bool {
+// 	return bytes.ContainsAny(data, string(CC))
+// }
+//
+// func filterControlChar(data []byte) []byte {
+// 	// return bytes.ReplaceAll(data, CC, []byte{})
+// 	for idx := 0; idx < len(CC); idx += 1 {
+// 		data = bytes.ReplaceAll(data, []byte{CC[idx]}, []byte{})
+// 	}
+// 	return data
+// }
 
 func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []string) (map[string]*shared.GistFile, error) {
 	fs := map[string]*shared.GistFile{}
@@ -252,7 +272,7 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 		// 	}
 		// }
 
-		utf8Content, err := json.Marshal(string(content))
+		utf8Content, err := CCToUnicodeCP(content)
 		if err != nil {
 			return nil, fmt.Errorf("failed to utf8 encode input, gist content is not a proper uncode string\n%s", err)
 		}
