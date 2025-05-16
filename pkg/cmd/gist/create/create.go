@@ -188,7 +188,7 @@ func createRun(opts *CreateOptions) error {
 	return nil
 }
 
-var CC = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
+var CC = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 127}
 
 func containsControlChar(data []byte) bool {
 	return bytes.ContainsAny(data, string(CC))
@@ -213,7 +213,7 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 		var filename string
 		var content []byte
 		var err error
-		fromStdin := false
+		// fromStdin := false
 
 		if f == "-" {
 			if filenameOverride != "" {
@@ -227,7 +227,7 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 			}
 			stdin.Close()
 
-			fromStdin = true
+			// fromStdin = true
 		} else {
 			content, err = os.ReadFile(f)
 			if err != nil {
@@ -239,21 +239,26 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 
 		// NOTE this succeeds at creating the gist
 		// but gist view fails with error file is binary
-		filteredContent := content
-		if containsControlChar(content) {
-			filteredContent = filterCC(content)
-		}
+		// filteredContent := content
+		// if containsControlChar(content) {
+		// 	filteredContent = filterCC(content)
+		// }
 
-		if shared.IsBinaryContents(filteredContent) {
-			if fromStdin {
-				return nil, fmt.Errorf("binary file contents not supported")
-			} else {
-				return nil, fmt.Errorf("failed to upload %s: binary file not supported", f)
-			}
+		// if shared.IsBinaryContents(filteredContent) {
+		// 	if fromStdin {
+		// 		return nil, fmt.Errorf("binary file contents not supported")
+		// 	} else {
+		// 		return nil, fmt.Errorf("failed to upload %s: binary file not supported", f)
+		// 	}
+		// }
+
+		utf8Content, err := json.Marshal(string(content))
+		if err != nil {
+			return nil, fmt.Errorf("failed to utf8 encode input, gist content is not a proper uncode string\n%s", err)
 		}
 
 		fs[filename] = &shared.GistFile{
-			Content: string(content),
+			Content: string(utf8Content),
 		}
 	}
 
