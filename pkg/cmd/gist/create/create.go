@@ -190,11 +190,11 @@ func createRun(opts *CreateOptions) error {
 
 var CC = []byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31}
 
-func FileContainsControlChar(data []byte) bool {
+func containsControlChar(data []byte) bool {
 	return bytes.ContainsAny(data, string(CC))
 }
 
-func FilterCC(data []byte) []byte {
+func filterCC(data []byte) []byte {
 	// return bytes.ReplaceAll(data, CC, []byte{})
 	for idx := 0; idx < len(CC); idx += 1 {
 		data = bytes.ReplaceAll(data, []byte{CC[idx]}, []byte{})
@@ -213,6 +213,7 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 		var filename string
 		var content []byte
 		var err error
+		fromStdin := false
 
 		if f == "-" {
 			if filenameOverride != "" {
@@ -226,29 +227,29 @@ func processFiles(stdin io.ReadCloser, filenameOverride string, filenames []stri
 			}
 			stdin.Close()
 
-			if shared.IsBinaryContents(content) {
-				return nil, fmt.Errorf("binary file contents not supported")
-			}
+			fromStdin = true
 		} else {
-			isBinary, err := shared.IsBinaryFile(f)
-			if err != nil {
-				return fs, fmt.Errorf("failed to read file %s: %w", f, err)
-			}
-			if isBinary {
-				data, _ := os.ReadFile(f)
-
-				if FileContainsControlChar(data) {
-					fmt.Printf("%d\n", FilterCC(data))
-				}
-				return nil, fmt.Errorf("failed to upload %s: binary file not supported", f)
-			}
-
 			content, err = os.ReadFile(f)
 			if err != nil {
 				return fs, fmt.Errorf("failed to read file %s: %w", f, err)
 			}
 
 			filename = filepath.Base(f)
+		}
+
+		// NOTE this succeeds at creating the gist
+		// but gist view fails with error file is binary
+		filteredContent := content
+		if containsControlChar(content) {
+			filteredContent = filterCC(content)
+		}
+
+		if shared.IsBinaryContents(filteredContent) {
+			if fromStdin {
+				return nil, fmt.Errorf("binary file contents not supported")
+			} else {
+				return nil, fmt.Errorf("failed to upload %s: binary file not supported", f)
+			}
 		}
 
 		fs[filename] = &shared.GistFile{
